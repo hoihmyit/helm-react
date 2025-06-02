@@ -78,5 +78,88 @@ kubectl --namespace default port-forward <pod-name> 8080:<container-pod:80>
 http://localhost:8080/
 ```
 
-## Use ingress to expose public url, port
+## Expose Ingress Outside the Kind Cluster
+1. Create a new file called kind-config.yaml to increase the resource
+2. Install Ingress Controller (e.g., NGINX)
+```aiignore
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/kind/deploy.yaml
+```
+3. Verify the NGINX Ingress Controller
+```
+kubectl get pods -n ingress-nginx
+```
+4. Recreate the cluster
+```
+kind delete cluster
+kind create cluster --config kind-config.yaml
+```
+5. Enable Ingress and update the values.yaml
+```
+service:
+  targetPort: 80
+...
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+     kubernetes.io/ingress.class: nginx
+  hosts:
+    - host: localhost
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+```
+6. Update the targetPort in the service.yaml file
+```
+spec:
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+```
+7. Update the containerPort in the deployment.yaml file
+```
+containers:
+  ports:
+    - name: http
+      containerPort: {{ .Values.service.targetPort }}
+```
+8. Uninstall and install the Helm
+```
+helm uninstall react-app
+helm install react-app ./chart
+```
+or
+```
+helm upgrade --install react-app ./chart
+```
+9. Access to React app via
+```
+http://localhost:8080/
+```
+
+## Other
+1. Check Cluster Nodes
+```
+kubectl get nodes
+```
+2. Describe Node for Detailed Resources
+```
+kubectl describe node <node-name>
+```
+3. Check Node Resource Usage (Metrics Server)
+```
+kubectl top nodes
+```
+- If you don’t have metrics-server, you can install it:
+```
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+4. Check if the pod is running and ready
+```
+kubectl get pods -o wide
+```
+5. Exec into the pod to troubleshoot if needed
+```
+kubectl exec -it <pod-name> -- /bin/sh
+```
 
